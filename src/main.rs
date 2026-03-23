@@ -16,6 +16,7 @@ use services::stellar_service::StellarService;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    println!("DEBUG: Docker Hot-Reload is working!");
     dotenvy::dotenv().ok();
 
     tracing_subscriber::registry()

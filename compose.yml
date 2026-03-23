@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: tipjar-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tipjar
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d tipjar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: tipjar-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/target # Prevents local target folder from overwriting container target
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/tipjar
+      - STELLAR_NETWORK=testnet
+      - RUST_LOG=stellar_tipjar_backend=debug
+    depends_on:
+      db:
+        condition: service_healthy

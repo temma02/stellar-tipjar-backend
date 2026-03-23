@@ -1,0 +1,22 @@
+# Jump to 'latest' to ensure we have the most recent Cargo features
+FROM rust:latest
+
+# Use a faster way to get cargo-watch without compiling from source
+# This saves about 10 minutes of build time!
+RUN curl -L https://github.com/watchexec/cargo-watch/releases/download/v8.5.3/cargo-watch-v8.5.3-x86_64-unknown-linux-gnu.tar.xz | tar -xJ --strip-components=1 -C /usr/local/bin
+
+WORKDIR /app
+
+# Copy dependency files
+COPY Cargo.toml Cargo.lock* ./
+
+# Pre-build dependencies (using a dummy file to cache the layer)
+RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build
+
+# Copy the rest of the source
+COPY . .
+
+EXPOSE 8000
+
+# Use the binary we just installed
+CMD ["cargo-watch", "-x", "run"]
