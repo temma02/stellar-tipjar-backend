@@ -15,6 +15,7 @@ mod models;
 mod middleware;
 mod routes;
 mod services;
+mod validation;
 
 use db::connection::AppState;
 use docs::ApiDoc;

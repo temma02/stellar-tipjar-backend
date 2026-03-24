@@ -12,6 +12,7 @@ use crate::controllers::tip_controller;
 use crate::db::connection::AppState;
 use crate::models::creator::{CreateCreatorRequest, CreatorResponse};
 use crate::models::tip::TipResponse;
+use crate::validation::ValidatedJson;
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -33,7 +34,7 @@ pub fn router() -> Router<Arc<AppState>> {
 )]
 pub async fn create_creator(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<CreateCreatorRequest>,
+    ValidatedJson(body): ValidatedJson<CreateCreatorRequest>,
 ) -> impl IntoResponse {
     match creator_controller::create_creator(&state, body).await {
         Ok(creator) => {

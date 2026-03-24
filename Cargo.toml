@@ -31,6 +31,9 @@ jsonwebtoken = "9"
 bcrypt = "0.15"
 axum-extra = { version = "0.9", features = ["typed-header"] }
 headers = "0.4"
+validator = { version = "0.18", features = ["derive"] }
+lazy_static = "1"
+regex = "1"
 utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }
 utoipa-swagger-ui = { version = "9", features = ["axum", "vendored"] }
 

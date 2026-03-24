@@ -1,18 +1,27 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use validator::Validate;
 
 /// Register a new creator account with a password.
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct RegisterRequest {
+    #[validate(length(min = 3, max = 30, message = "Username must be between 3 and 30 characters"))]
     pub username: String,
+
+    #[validate(custom(function = "crate::validation::stellar::validate_stellar_address"))]
     pub wallet_address: String,
+
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
 }
 
 /// Login with username + password.
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct LoginRequest {
+    #[validate(length(min = 1, message = "Username is required"))]
     pub username: String,
+
+    #[validate(length(min = 1, message = "Password is required"))]
     pub password: String,
 }
 
@@ -25,20 +34,17 @@ pub struct AuthResponse {
 }
 
 /// Refresh access token using a refresh token.
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct RefreshRequest {
+    #[validate(length(min = 1, message = "Refresh token is required"))]
     pub refresh_token: String,
 }
 
 /// JWT claims payload.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
-    /// Subject — the creator's username.
     pub sub: String,
-    /// Token kind: "access" or "refresh".
     pub kind: String,
-    /// Expiry as Unix timestamp.
     pub exp: usize,
-    /// Issued at as Unix timestamp.
     pub iat: usize,
 }

@@ -12,6 +12,7 @@ use crate::db::connection::AppState;
 use crate::models::auth::{AuthResponse, LoginRequest, RefreshRequest, RegisterRequest};
 use crate::models::creator::Creator;
 use crate::services::auth_service;
+use crate::validation::ValidatedJson;
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -34,7 +35,7 @@ pub fn router() -> Router<Arc<AppState>> {
 )]
 async fn register(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<RegisterRequest>,
+    ValidatedJson(body): ValidatedJson<RegisterRequest>,
 ) -> impl IntoResponse {
     let password_hash = match auth_service::hash_password(&body.password) {
         Ok(h) => h,
@@ -104,7 +105,7 @@ async fn register(
 )]
 async fn login(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<LoginRequest>,
+    ValidatedJson(body): ValidatedJson<LoginRequest>,
 ) -> impl IntoResponse {
     let row = sqlx::query_as::<_, Creator>(
         "SELECT id, username, wallet_address, password_hash, created_at FROM creators WHERE username = $1",
@@ -171,7 +172,7 @@ async fn login(
         (status = 401, description = "Invalid or expired refresh token")
     )
 )]
-async fn refresh(Json(body): Json<RefreshRequest>) -> impl IntoResponse {
+async fn refresh(ValidatedJson(body): ValidatedJson<RefreshRequest>) -> impl IntoResponse {
     match auth_service::validate_token(&body.refresh_token, "refresh") {
         Ok(claims) => match auth_service::generate_tokens(&claims.sub) {
             Ok(tokens) => (StatusCode::OK, Json(serde_json::json!(tokens))).into_response(),
