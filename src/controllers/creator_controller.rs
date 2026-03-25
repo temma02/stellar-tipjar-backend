@@ -32,8 +32,15 @@ pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> Resu
     // Warm the cache immediately after creation.
     if let Some(conn) = state.redis.as_ref() {
         let mut conn = conn.clone();
-        redis_client::set(&mut conn, &keys::creator(&creator.username), &creator, redis_client::TTL_CREATOR).await;
+        let _ = redis_client::set(&mut conn, &keys::creator(&creator.username), &creator, redis_client::TTL_CREATOR).await;
     }
+
+    // Notify external services via webhook.
+    crate::webhooks::trigger_webhooks(
+        state.db.clone(), 
+        "creator.created", 
+        serde_json::to_value(&creator).unwrap()
+    ).await;
 
     Ok(creator)
 }
@@ -58,7 +65,7 @@ pub async fn get_creator_by_username(state: &AppState, username: &str) -> Result
     // Populate cache if found.
     if let (Some(ref c), Some(conn)) = (&creator, state.redis.as_ref()) {
         let mut conn = conn.clone();
-        redis_client::set(&mut conn, &keys::creator(username), c, redis_client::TTL_CREATOR).await;
+        let _ = redis_client::set(&mut conn, &keys::creator(username), c, redis_client::TTL_CREATOR).await;
     }
 
     Ok(creator)

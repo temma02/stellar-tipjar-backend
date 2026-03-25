@@ -3,9 +3,21 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use stellar_tipjar_backend::db::connection::AppState;
-use stellar_tipjar_backend::services::stellar_service::StellarService;
-use stellar_tipjar_backend::{cache, db, email, create_app};
+mod cache;
+mod controllers;
+mod db;
+mod docs;
+mod middleware;
+mod models;
+mod routes;
+mod webhooks;
+mod search;
+mod services;
+mod shutdown;
+
+use db::connection::AppState;
+use docs::ApiDoc;
+use services::stellar_service::StellarService;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -75,12 +87,41 @@ async fn main() -> anyhow::Result<()> {
         stellar,
         performance,
         redis,
-        email: email_sender,
-        tip_service,
-        creator_service,
     });
 
-    let app = create_app(state);
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_origin(Any)
+        .allow_headers(Any);
+
+    // Build rate limiters and spawn background cleanup tasks for each.
+    let (general_config, general_limiter) = middleware::rate_limiter::general_limiter();
+    let (write_config, write_limiter) = middleware::rate_limiter::write_limiter();
+    middleware::rate_limiter::spawn_cleanup(&general_config);
+    middleware::rate_limiter::spawn_cleanup(&write_config);
+
+    // Write endpoints get a stricter per-IP limit.
+    let write_routes = Router::new()
+        .merge(routes::tips::router())
+        .merge(routes::creators::write_router())
+        .layer(write_limiter);
+
+    // Read endpoints use the general limit.
+    let read_routes = Router::new()
+        .merge(routes::creators::read_router())
+        .merge(routes::health::router())
+        .layer(general_limiter);
+
+    let app = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui")
+            .url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(write_routes)
+        .merge(read_routes)
+        .layer(cors)
+        .layer(TraceLayer::new_for_http())
+        .layer(axum::middleware::from_fn(middleware::cache::cache_control))
+        .layer(middleware::timeout::timeout_layer_from_env())
+        .with_state(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "8000".to_string());
     let addr = format!("0.0.0.0:{}", port);

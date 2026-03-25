@@ -11,7 +11,4 @@ pub struct AppState {
     pub stellar: StellarService,
     pub performance: Arc<PerformanceMonitor>,
     pub redis: Option<ConnectionManager>,
-    pub email: Arc<crate::email::EmailSender>,
-    pub tip_service: Arc<crate::services::tip_service::TipService>,
-    pub creator_service: Arc<crate::services::creator_service::CreatorService>,
 }
