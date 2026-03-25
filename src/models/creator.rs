@@ -11,12 +11,12 @@ lazy_static! {
     static ref USERNAME_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Creator {
     pub id: Uuid,
     pub username: String,
     pub wallet_address: String,
-    pub password_hash: String,
+    pub email: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -31,6 +31,8 @@ pub struct CreateCreatorRequest {
     /// Stellar wallet address (public key)
     #[validate(custom(function = "crate::validation::stellar::validate_stellar_address"))]
     pub wallet_address: String,
+    /// Optional email for tip notifications
+    pub email: Option<String>,
 }
 
 /// Creator profile response
@@ -39,6 +41,7 @@ pub struct CreatorResponse {
     pub id: Uuid,
     pub username: String,
     pub wallet_address: String,
+    pub email: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -48,6 +51,7 @@ impl From<Creator> for CreatorResponse {
             id: c.id,
             username: c.username,
             wallet_address: c.wallet_address,
+            email: c.email,
             created_at: c.created_at,
         }
     }
