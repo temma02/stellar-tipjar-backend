@@ -121,7 +121,12 @@ async fn resolve_admin_from_headers(state: &Arc<AppState>, headers: &HeaderMap) 
     let hash = headers
         .get("X-Admin-Key")
         .and_then(|v| v.to_str().ok())
-        .map(|k| format!("{:x}", Sha256::digest(k.as_bytes())));
+        .map(|k| {
+            Sha256::digest(k.as_bytes())
+                .iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<String>()
+        });
 
     if let Some(h) = hash {
         admin_controller::get_admin_username_by_key_hash(&state.db, &h)

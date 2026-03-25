@@ -21,10 +21,6 @@ CREATE INDEX IF NOT EXISTS idx_tips_created_at ON tips(created_at DESC);
 -- Composite index for the common "get tips for a creator, newest first" query
 CREATE INDEX IF NOT EXISTS idx_tips_creator_created ON tips(creator_username, created_at DESC);
 
--- Partial index for recent tips (last 30 days) to speed up dashboard queries
-CREATE INDEX IF NOT EXISTS idx_tips_recent ON tips(created_at DESC)
-WHERE created_at > NOW() - INTERVAL '30 days';
-
 -- Index on audit_logs for admin activity queries (newest first)
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
 

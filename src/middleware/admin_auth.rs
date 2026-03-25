@@ -31,7 +31,8 @@ pub async fn require_admin(
             .into_response();
     };
 
-    let hash = format!("{:x}", Sha256::digest(raw_key.as_bytes()));
+    // Use your helper function here to avoid the LowerHex trait error
+    let hash = hash_api_key(&raw_key);
 
     let exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM admin_users WHERE api_key_hash = $1)",
@@ -54,5 +55,8 @@ pub async fn require_admin(
 
 /// SHA-256 hex hash of a raw API key — used when seeding admin users.
 pub fn hash_api_key(raw: &str) -> String {
-    format!("{:x}", Sha256::digest(raw.as_bytes()))
+    Sha256::digest(raw.as_bytes())
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>()
 }

@@ -5,10 +5,12 @@ use tower_governor::{
     key_extractor::PeerIpKeyExtractor,
     GovernorLayer,
 };
+// FIXED: This comes from governor, not tower_governor
+use governor::middleware::StateInformationMiddleware;
 
 /// Builds a GovernorLayer for general read endpoints.
 /// Configurable via env: RATE_LIMIT_PER_SECOND (default 10), RATE_LIMIT_BURST_SIZE (default 20).
-pub fn general_limiter() -> GovernorLayer<PeerIpKeyExtractor, governor::middleware::NoOpMiddleware<governor::clock::QuantaInstant>> {
+pub fn general_limiter() -> GovernorLayer<PeerIpKeyExtractor, StateInformationMiddleware> {
     let per_second = env_u64("RATE_LIMIT_PER_SECOND", 10);
     let burst_size = env_u32("RATE_LIMIT_BURST_SIZE", 20);
     build_layer(per_second, burst_size)
@@ -16,7 +18,7 @@ pub fn general_limiter() -> GovernorLayer<PeerIpKeyExtractor, governor::middlewa
 
 /// Builds a stricter GovernorLayer for write endpoints (POST /tips, POST /creators).
 /// Configurable via env: RATE_LIMIT_WRITE_PER_SECOND (default 2), RATE_LIMIT_WRITE_BURST_SIZE (default 5).
-pub fn write_limiter() -> GovernorLayer<PeerIpKeyExtractor, governor::middleware::NoOpMiddleware<governor::clock::QuantaInstant>> {
+pub fn write_limiter() -> GovernorLayer<PeerIpKeyExtractor, StateInformationMiddleware> {
     let per_second = env_u64("RATE_LIMIT_WRITE_PER_SECOND", 2);
     let burst_size = env_u32("RATE_LIMIT_WRITE_BURST_SIZE", 5);
     build_layer(per_second, burst_size)
@@ -25,7 +27,7 @@ pub fn write_limiter() -> GovernorLayer<PeerIpKeyExtractor, governor::middleware
 fn build_layer(
     per_second: u64,
     burst_size: u32,
-) -> GovernorLayer<PeerIpKeyExtractor, governor::middleware::NoOpMiddleware<governor::clock::QuantaInstant>> {
+) -> GovernorLayer<PeerIpKeyExtractor, StateInformationMiddleware> {
     let config = Arc::new(
         GovernorConfigBuilder::default()
             .per_second(per_second)

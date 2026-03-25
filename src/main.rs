@@ -12,9 +12,9 @@ mod cache;
 mod controllers;
 mod db;
 mod docs;
-mod middleware;
+mod metrics;      // <-- Added metrics module
+mod middleware;   // <-- Cleaned up duplicates!
 mod models;
-mod middleware;
 mod routes;
 mod search;
 mod services;
@@ -23,6 +23,10 @@ mod shutdown;
 use db::connection::AppState;
 use docs::ApiDoc;
 use services::stellar_service::StellarService;
+
+// Import our new Prometheus handlers and middleware
+use crate::metrics::metrics_handler;
+use crate::middleware::metrics::track_metrics;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -69,6 +73,7 @@ async fn main() -> anyhow::Result<()> {
         db: pool,
         stellar,
         performance,
+        redis, // <-- ADDED: Don't forget to pass the redis client into state!
     });
 
     let cors = CorsLayer::new()
@@ -77,10 +82,8 @@ async fn main() -> anyhow::Result<()> {
         .allow_headers(Any);
 
     // Build rate limiters and spawn background cleanup tasks for each.
-    let (general_config, general_limiter) = middleware::rate_limiter::general_limiter();
-    let (write_config, write_limiter) = middleware::rate_limiter::write_limiter();
-    middleware::rate_limiter::spawn_cleanup(&general_config);
-    middleware::rate_limiter::spawn_cleanup(&write_config);
+    let general_limiter = middleware::rate_limiter::general_limiter();
+    let write_limiter = middleware::rate_limiter::write_limiter();
 
     // Write endpoints get a stricter per-IP limit.
     let write_routes = Router::new()
@@ -99,6 +102,8 @@ async fn main() -> anyhow::Result<()> {
             .url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(write_routes)
         .merge(read_routes)
+        .route("/metrics", axum::routing::get(metrics_handler)) // <-- Added metrics endpoint
+        .layer(axum::middleware::from_fn(track_metrics))       // <-- Added tracking middleware
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(middleware::timeout::timeout_layer_from_env())

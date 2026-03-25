@@ -41,7 +41,8 @@ pub async fn create_creator(
     State(state): State<Arc<AppState>>,
     Json(body): Json<CreateCreatorRequest>,
 ) -> impl IntoResponse {
-    match creator_controller::create_creator(&state.db, &state.redis, body).await {
+    // Updated to pass &state directly instead of &state.db and &state.redis
+    match creator_controller::create_creator(&state, body).await {
         Ok(creator) => {
             let response: CreatorResponse = creator.into();
             (StatusCode::CREATED, Json(serde_json::json!(response))).into_response()
@@ -75,7 +76,8 @@ pub async fn get_creator(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> impl IntoResponse {
-    match creator_controller::get_creator_by_username(&state.db, &state.redis, &username).await {
+    // Updated to pass &state directly
+    match creator_controller::get_creator_by_username(&state, &username).await {
         Ok(Some(creator)) => {
             let response: CreatorResponse = creator.into();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
@@ -113,6 +115,7 @@ pub async fn get_creator_tips(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> impl IntoResponse {
+    // This was already passing &state correctly
     match tip_controller::get_tips_for_creator(&state, &username).await {
         Ok(tips) => {
             let response: Vec<TipResponse> = tips.into_iter().map(Into::into).collect();
@@ -153,7 +156,8 @@ pub async fn search_creators(
             .into_response();
     }
 
-    match creator_controller::search_creators(&state.db, &query).await {
+    // Updated to pass &state directly instead of &state.db
+    match creator_controller::search_creators(&state, &query).await {
         Ok(creators) => {
             let response: Vec<CreatorResponse> = creators.into_iter().map(Into::into).collect();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
