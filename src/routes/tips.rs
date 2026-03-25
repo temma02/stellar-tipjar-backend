@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::controllers::tip_controller;
 use crate::db::connection::AppState;
 use crate::models::tip::{RecordTipRequest, TipResponse};
+use crate::validation::ValidatedJson;
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new().route("/tips", post(record_tip))
@@ -30,7 +31,7 @@ pub fn router() -> Router<Arc<AppState>> {
 )]
 pub async fn record_tip(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<RecordTipRequest>,
+    ValidatedJson(body): ValidatedJson<RecordTipRequest>,
 ) -> impl IntoResponse {
     match state
         .stellar
@@ -59,7 +60,7 @@ pub async fn record_tip(
         Ok(true) => {}
     }
 
-    match tip_controller::record_tip(&state, body).await {
+    match state.tip_service.record_tip(state.clone(), body).await {
         Ok(tip) => {
             let response: TipResponse = tip.into();
             (StatusCode::CREATED, Json(serde_json::json!(response))).into_response()

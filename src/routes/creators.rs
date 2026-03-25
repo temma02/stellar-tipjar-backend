@@ -11,6 +11,7 @@ use crate::controllers::creator_controller;
 use crate::controllers::tip_controller;
 use crate::db::connection::AppState;
 use crate::models::creator::{CreateCreatorRequest, CreatorResponse};
+use crate::models::pagination::PaginationParams;
 use crate::models::tip::TipResponse;
 use crate::search::SearchQuery;
 
@@ -39,9 +40,9 @@ pub fn read_router() -> Router<Arc<AppState>> {
 )]
 pub async fn create_creator(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<CreateCreatorRequest>,
+    ValidatedJson(body): ValidatedJson<CreateCreatorRequest>,
 ) -> impl IntoResponse {
-    match creator_controller::create_creator(&state.db, &state.redis, body).await {
+    match creator_controller::create_creator(&state, body).await {
         Ok(creator) => {
             let response: CreatorResponse = creator.into();
             (StatusCode::CREATED, Json(serde_json::json!(response))).into_response()
@@ -75,7 +76,7 @@ pub async fn get_creator(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> impl IntoResponse {
-    match creator_controller::get_creator_by_username(&state.db, &state.redis, &username).await {
+    match creator_controller::get_creator_by_username(&state, &username).await {
         Ok(Some(creator)) => {
             let response: CreatorResponse = creator.into();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
@@ -96,24 +97,26 @@ pub async fn get_creator(
     }
 }
 
-/// List all tips for a creator
+/// List tips for a creator with pagination
 #[utoipa::path(
     get,
     path = "/creators/{username}/tips",
     tag = "creators",
     params(
-        ("username" = String, Path, description = "Creator's unique username")
+        ("username" = String, Path, description = "Creator's unique username"),
+        PaginationParams,
     ),
     responses(
-        (status = 200, description = "List of tips", body = Vec<TipResponse>),
+        (status = 200, description = "Paginated list of tips"),
         (status = 500, description = "Internal server error")
     )
 )]
 pub async fn get_creator_tips(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
+    Query(params): Query<PaginationParams>,
 ) -> impl IntoResponse {
-    match tip_controller::get_tips_for_creator(&state, &username).await {
+    match state.tip_service.get_tips_for_creator(&state, &username).await {
         Ok(tips) => {
             let response: Vec<TipResponse> = tips.into_iter().map(Into::into).collect();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
