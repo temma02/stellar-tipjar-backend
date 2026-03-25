@@ -38,7 +38,6 @@ fn build_config_and_layer(
         GovernorConfigBuilder::default()
             .per_second(per_second)
             .burst_size(burst_size)
-            .use_headers()
             .finish()
             .unwrap(),
     );

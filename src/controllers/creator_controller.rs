@@ -11,9 +11,9 @@ use sqlx::PgPool;
 
 pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> Result<Creator> {
     let query = r#"
-        INSERT INTO creators (id, username, wallet_address, created_at)
-        VALUES ($1, $2, $3, NOW())
-        RETURNING id, username, wallet_address, created_at
+        INSERT INTO creators (id, username, wallet_address, email, created_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        RETURNING id, username, wallet_address, email, created_at
         "#;
 
     let start = Instant::now();
@@ -21,6 +21,7 @@ pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> Resu
     .bind(Uuid::new_v4())
     .bind(&req.username)
     .bind(&req.wallet_address)
+    .bind(&req.email)
     .fetch_one(&state.db)
     .await?;
     let duration = start.elapsed();
@@ -46,7 +47,7 @@ pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> Resu
 
 pub async fn get_creator_by_username(state: &AppState, username: &str) -> Result<Option<Creator>> {
     let query = r#"
-        SELECT id, username, wallet_address, created_at
+        SELECT id, username, wallet_address, email, created_at
         FROM creators
         WHERE username = $1
         "#;
@@ -78,7 +79,7 @@ pub async fn search_creators(pool: &PgPool, query: &SearchQuery) -> Result<Vec<C
 
     let creators = sqlx::query_as::<_, Creator>(
         r#"
-        SELECT id, username, wallet_address, created_at
+        SELECT id, username, wallet_address, email, created_at
         FROM creators
         WHERE
             search_vector @@ plainto_tsquery('english', $1)
