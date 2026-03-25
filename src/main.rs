@@ -12,6 +12,7 @@ mod cache;
 mod controllers;
 mod db;
 mod docs;
+mod email;
 mod middleware;
 mod models;
 mod routes;
@@ -63,12 +64,18 @@ async fn main() -> anyhow::Result<()> {
     let redis_url = std::env::var("REDIS_URL")
         .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
     let redis = cache::redis_client::connect(&redis_url).await;
+    
+    // Initialize email system
+    let (email_sender, email_rx) = email::sender::EmailSender::new();
+    tokio::spawn(email::sender::start_email_worker(email_rx));
+    let email_sender = Arc::new(email_sender);
 
     let state = Arc::new(AppState {
         db: pool,
         stellar,
         performance,
         redis,
+        email: email_sender,
     });
 
     let cors = CorsLayer::new()
