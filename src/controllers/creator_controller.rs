@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::db::connection::AppState;
 use crate::db::query_logger::QueryLogger;
 use crate::models::creator::{CreateCreatorRequest, Creator};
+use crate::search::SearchQuery;
 
 pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> Result<Creator> {
     let query = r#"
@@ -58,4 +59,31 @@ pub async fn get_creator_by_username(state: &AppState, username: &str) -> Result
     }
 
     Ok(creator)
+}
+
+/// Search creators by username using PostgreSQL full-text search with trigram
+/// fuzzy fallback. Results are ranked by ts_rank descending.
+pub async fn search_creators(pool: &PgPool, query: &SearchQuery) -> Result<Vec<Creator>> {
+    let term = query.q.trim().to_string();
+    let limit = query.clamped_limit();
+
+    let creators = sqlx::query_as::<_, Creator>(
+        r#"
+        SELECT id, username, wallet_address, created_at
+        FROM creators
+        WHERE
+            search_vector @@ plainto_tsquery('english', $1)
+            OR username ILIKE '%' || $1 || '%'
+        ORDER BY
+            ts_rank(search_vector, plainto_tsquery('english', $1)) DESC,
+            created_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(&term)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(creators)
 }

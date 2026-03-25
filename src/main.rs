@@ -15,6 +15,7 @@ mod docs;
 mod models;
 mod middleware;
 mod routes;
+mod search;
 mod services;
 
 use db::connection::AppState;
