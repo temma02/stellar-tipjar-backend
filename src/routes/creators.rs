@@ -14,10 +14,14 @@ use crate::models::creator::{CreateCreatorRequest, CreatorResponse};
 use crate::models::tip::TipResponse;
 use crate::search::SearchQuery;
 
-pub fn router() -> Router<Arc<AppState>> {
+/// Write routes: POST /creators — subject to stricter rate limiting.
+pub fn write_router() -> Router<Arc<AppState>> {
+    Router::new().route("/creators", post(create_creator))
+}
+
+/// Read routes: GET /creators/:username, GET /creators/:username/tips — general rate limiting.
+pub fn read_router() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/creators", post(create_creator))
-        .route("/creators/search", get(search_creators))
         .route("/creators/:username", get(get_creator))
         .route("/creators/:username/tips", get(get_creator_tips))
 }
@@ -37,7 +41,7 @@ pub async fn create_creator(
     State(state): State<Arc<AppState>>,
     Json(body): Json<CreateCreatorRequest>,
 ) -> impl IntoResponse {
-    match creator_controller::create_creator(&state.db, body).await {
+    match creator_controller::create_creator(&state, body).await {
         Ok(creator) => {
             let response: CreatorResponse = creator.into();
             (StatusCode::CREATED, Json(serde_json::json!(response))).into_response()
@@ -71,7 +75,7 @@ pub async fn get_creator(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> impl IntoResponse {
-    match creator_controller::get_creator_by_username(&state.db, &username).await {
+    match creator_controller::get_creator_by_username(&state, &username).await {
         Ok(Some(creator)) => {
             let response: CreatorResponse = creator.into();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
@@ -109,7 +113,7 @@ pub async fn get_creator_tips(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> impl IntoResponse {
-    match tip_controller::get_tips_for_creator(&state.db, &username).await {
+    match tip_controller::get_tips_for_creator(&state, &username).await {
         Ok(tips) => {
             let response: Vec<TipResponse> = tips.into_iter().map(Into::into).collect();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
