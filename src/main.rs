@@ -1,6 +1,7 @@
+use axum::Router;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
-use std::time::Duration;
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use axum::{http::Method, Router};
 use tower_http::cors::{Any, CorsLayer};
