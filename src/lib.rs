@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod cache;
 pub mod controllers;
 pub mod cqrs;
@@ -6,10 +7,13 @@ pub mod docs;
 pub mod email;
 pub mod errors;
 pub mod events;
+pub mod graphql;
 pub mod middleware;
 pub mod models;
 pub mod routes;
+pub mod saga;
 pub mod search;
+pub mod security;
 pub mod services;
 pub mod shutdown;
 pub mod telemetry;
