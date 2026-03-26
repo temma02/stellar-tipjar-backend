@@ -9,12 +9,18 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use tokio::sync::broadcast;
+use axum::{http::Method, Router};
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 mod cache;
 mod controllers;
 mod db;
 mod docs;
 mod metrics;
+mod email;
+mod errors;
+mod logging;
 mod middleware;
 mod models;
 mod routes;
@@ -24,6 +30,8 @@ mod shutdown;
 mod ws;           // Added from Main
 mod webhooks;     // Added from Main
 mod email;        // Added from Main (Ensure this module exists in your tree)
+mod validation;
+mod ws;
 
 use db::connection::AppState;
 use docs::ApiDoc;

@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::controllers::tip_controller;
 use crate::db::connection::AppState;
+use crate::errors::{AppError, StellarError};
 use crate::models::tip::{RecordTipRequest, TipResponse};
 
 pub fn router() -> Router<Arc<AppState>> {
@@ -32,30 +33,19 @@ pub async fn record_tip(
     State(state): State<Arc<AppState>>,
     Json(body): Json<RecordTipRequest>,
 ) -> impl IntoResponse {
+    crate::validation::ValidatedJson(body): crate::validation::ValidatedJson<RecordTipRequest>,
+) -> Result<impl IntoResponse, AppError> {
     match state
         .stellar
         .verify_transaction(&body.transaction_hash)
         .await
     {
         Ok(false) => {
-            return (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                Json(serde_json::json!({ "error": "Transaction not found or unsuccessful on the Stellar network" })),
-            )
-                .into_response();
+            return Err(AppError::Stellar(StellarError::TransactionNotFound {
+                hash: body.transaction_hash.clone(),
+            }));
         }
-        Err(e) => {
-            tracing::error!(
-                "Failed to verify transaction {}: {}",
-                body.transaction_hash,
-                e
-            );
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": "Unable to verify transaction on the Stellar network" })),
-            )
-                .into_response();
-        }
+        Err(e) => return Err(e),
         Ok(true) => {}
     }
 
@@ -73,4 +63,7 @@ pub async fn record_tip(
                 .into_response()
         }
     }
+    let tip = tip_controller::record_tip(&state, body).await?;
+    let response: TipResponse = tip.into();
+    Ok((StatusCode::CREATED, Json(serde_json::json!(response))).into_response())
 }

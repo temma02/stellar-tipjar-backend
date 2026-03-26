@@ -12,6 +12,7 @@ use crate::controllers::tip_controller;
 use crate::db::connection::AppState;
 // Added from Main: Validation and Pagination
 use crate::middleware::validation::ValidatedJson;
+use crate::errors::{AppError, ValidationError};
 use crate::models::creator::{CreateCreatorRequest, CreatorResponse};
 use crate::models::pagination::PaginationParams;
 use crate::models::tip::TipResponse;
@@ -25,6 +26,7 @@ pub fn write_router() -> Router<Arc<AppState>> {
 /// Read routes: GET /creators/:username, GET /creators/:username/tips — general rate limiting.
 pub fn read_router() -> Router<Arc<AppState>> {
     Router::new()
+        .route("/creators/search", get(search_creators))
         .route("/creators/:username", get(get_creator))
         .route("/creators/:username/tips", get(get_creator_tips))
 }
@@ -43,23 +45,11 @@ pub fn read_router() -> Router<Arc<AppState>> {
 )]
 pub async fn create_creator(
     State(state): State<Arc<AppState>>,
-    // Use ValidatedJson from Main, but keep our fixed &state call
-    ValidatedJson(body): ValidatedJson<CreateCreatorRequest>,
-) -> impl IntoResponse {
-    match creator_controller::create_creator(&state, body).await {
-        Ok(creator) => {
-            let response: CreatorResponse = creator.into();
-            (StatusCode::CREATED, Json(serde_json::json!(response))).into_response()
-        }
-        Err(e) => {
-            tracing::error!("Failed to create creator: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({ "error": "Failed to create creator" })),
-            )
-                .into_response()
-        }
-    }
+    crate::validation::ValidatedJson(body): crate::validation::ValidatedJson<CreateCreatorRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let creator = creator_controller::create_creator(&state, body).await?;
+    let response: CreatorResponse = creator.into();
+    Ok((StatusCode::CREATED, Json(serde_json::json!(response))).into_response())
 }
 
 /// Get a creator by username
@@ -100,6 +90,10 @@ pub async fn get_creator(
                 .into_response()
         }
     }
+) -> Result<impl IntoResponse, AppError> {
+    let creator = creator_controller::get_creator_or_not_found(&state, &username).await?;
+    let response: CreatorResponse = creator.into();
+    Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
 }
 
 /// List tips for a creator with pagination
@@ -137,6 +131,12 @@ pub async fn get_creator_tips(
                 .into_response()
         }
     }
+    Query(params): Query<PaginationParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let _ = params;
+    let tips = tip_controller::get_tips_for_creator(&state, &username).await?;
+    let response: Vec<TipResponse> = tips.into_iter().map(Into::into).collect();
+    Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
 }
 
 /// Search creators by username
@@ -154,13 +154,11 @@ pub async fn get_creator_tips(
 pub async fn search_creators(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SearchQuery>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, AppError> {
     if query.q.trim().is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "Query parameter 'q' must not be empty" })),
-        )
-            .into_response();
+        return Err(AppError::Validation(ValidationError::InvalidRequest {
+            message: "Query parameter 'q' must not be empty".to_string(),
+        }));
     }
 
     // Keep our fixed call: pass &state directly
@@ -178,4 +176,8 @@ pub async fn search_creators(
                 .into_response()
         }
     }
+}
+    let creators = creator_controller::search_creators(&state.db, &query).await?;
+    let response: Vec<CreatorResponse> = creators.into_iter().map(Into::into).collect();
+    Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
 }
