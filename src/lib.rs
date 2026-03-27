@@ -8,6 +8,7 @@ pub mod email;
 pub mod errors;
 pub mod events;
 pub mod graphql;
+pub mod jobs;
 pub mod middleware;
 pub mod models;
 pub mod routes;

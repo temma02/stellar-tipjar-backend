@@ -10,8 +10,6 @@ use std::sync::Arc;
 use crate::controllers::creator_controller;
 use crate::controllers::tip_controller;
 use crate::db::connection::AppState;
-// Added from Main: Validation and Pagination
-use crate::middleware::validation::ValidatedJson;
 use crate::errors::{AppError, ValidationError};
 use crate::models::creator::{CreateCreatorRequest, CreatorResponse};
 use crate::models::pagination::PaginationParams;
@@ -70,7 +68,6 @@ pub async fn get_creator(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> impl IntoResponse {
-    // Keep our fixed call: pass &state directly
     match creator_controller::get_creator_by_username(&state, &username).await {
         Ok(Some(creator)) => {
             let response: CreatorResponse = creator.into();
@@ -90,10 +87,6 @@ pub async fn get_creator(
                 .into_response()
         }
     }
-) -> Result<impl IntoResponse, AppError> {
-    let creator = creator_controller::get_creator_or_not_found(&state, &username).await?;
-    let response: CreatorResponse = creator.into();
-    Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
 }
 
 /// List tips for a creator with pagination
@@ -113,11 +106,10 @@ pub async fn get_creator(
 pub async fn get_creator_tips(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
-    Query(params): Query<PaginationParams>, // Added from Main
+    Query(params): Query<PaginationParams>,
 ) -> impl IntoResponse {
-    // Main branch switched to using a Service for tips.
-    // We follow Main's logic here but pass &state as required by your app structure.
-    match state.tip_service.get_tips_for_creator(&state, &username).await {
+    let _ = params; // TODO: Implement pagination
+    match tip_controller::get_tips_for_creator(&state, &username).await {
         Ok(tips) => {
             let response: Vec<TipResponse> = tips.into_iter().map(Into::into).collect();
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
@@ -131,12 +123,6 @@ pub async fn get_creator_tips(
                 .into_response()
         }
     }
-    Query(params): Query<PaginationParams>,
-) -> Result<impl IntoResponse, AppError> {
-    let _ = params;
-    let tips = tip_controller::get_tips_for_creator(&state, &username).await?;
-    let response: Vec<TipResponse> = tips.into_iter().map(Into::into).collect();
-    Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
 }
 
 /// Search creators by username
@@ -161,23 +147,18 @@ pub async fn search_creators(
         }));
     }
 
-    // Keep our fixed call: pass &state directly
     match creator_controller::search_creators(&state, &query).await {
         Ok(creators) => {
             let response: Vec<CreatorResponse> = creators.into_iter().map(Into::into).collect();
-            (StatusCode::OK, Json(serde_json::json!(response))).into_response()
+            Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
         }
         Err(e) => {
             tracing::error!("Search failed: {}", e);
-            (
+            Ok((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({ "error": "Search failed" })),
             )
-                .into_response()
+                .into_response())
         }
     }
-}
-    let creators = creator_controller::search_creators(&state.db, &query).await?;
-    let response: Vec<CreatorResponse> = creators.into_iter().map(Into::into).collect();
-    Ok((StatusCode::OK, Json(serde_json::json!(response))).into_response())
 }

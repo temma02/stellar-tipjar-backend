@@ -25,7 +25,7 @@ chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tower-http = { version = "0.5", features = ["cors", "timeout", "trace"] }
+tower-http = { version = "0.5", features = ["cors", "timeout", "trace", "compression-gzip", "request-id"] }
 tower_governor = { version = "0.4", features = ["axum"] }
 governor = "0.6"
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
@@ -36,7 +36,6 @@ validator = { version = "0.18", features = ["derive"] }
 bcrypt = "0.15"
 jsonwebtoken = "9"
 regex = "1"
-lazy_static = "1"
 tera = "1"
 lettre = { version = "0.11", default-features = false, features = ["tokio1-native-tls", "smtp-transport", "builder", "hostname", "pool"] }
 csv = "1"
@@ -47,9 +46,9 @@ base64 = "0.22"
 urlencoding = "2"
 utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }
 utoipa-swagger-ui = { version = "7", features = ["axum"] }
-async-graphql = { version = "7", features = ["uuid", "chrono"] }
+async-graphql = { version = "7", features = ["uuid", "chrono", "dataloader"] }
 async-graphql-axum = "7"
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["sync"] }
 async-trait = "0.1"
 
 # OpenTelemetry distributed tracing
@@ -64,3 +63,4 @@ axum-test = "15"
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"
 httpmock = "0.7"
+proptest = "1.4"
