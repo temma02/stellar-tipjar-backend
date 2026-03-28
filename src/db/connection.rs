@@ -17,4 +17,5 @@ pub struct AppState {
     pub performance: Arc<PerformanceMonitor>,
     pub redis: Option<ConnectionManager>,
     pub broadcast_tx: broadcast::Sender<TipEvent>,
+    pub moderation: Arc<ModerationService>,
 }

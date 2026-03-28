@@ -10,6 +10,7 @@ pub mod events;
 pub mod graphql;
 pub mod jobs;
 pub mod middleware;
+pub mod moderation;
 pub mod models;
 pub mod routes;
 pub mod saga;

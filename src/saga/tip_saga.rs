@@ -115,6 +115,7 @@ pub async fn run_tip_saga(state: Arc<AppState>, req: RecordTipRequest) -> AppRes
                     username: req.username.clone(),
                     amount: req.amount.clone(),
                     transaction_hash: req.transaction_hash.clone(),
+                    message: req.message.clone(),
                 },
             }),
             compensation: Box::new(DeleteTipCompensation {

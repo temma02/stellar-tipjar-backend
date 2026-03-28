@@ -59,6 +59,7 @@ impl MutationRoot {
             username: input.username,
             amount: input.amount,
             transaction_hash: input.transaction_hash,
+            message: None,
         };
         req.validate()
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;

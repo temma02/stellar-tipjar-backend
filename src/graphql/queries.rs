@@ -31,6 +31,7 @@ pub struct GqlTip {
     pub creator_username: String,
     pub amount: String,
     pub transaction_hash: String,
+    pub message: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -41,6 +42,7 @@ impl From<crate::models::tip::Tip> for GqlTip {
             creator_username: t.creator_username,
             amount: t.amount,
             transaction_hash: t.transaction_hash,
+            message: t.message,
             created_at: t.created_at,
         }
     }

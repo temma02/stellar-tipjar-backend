@@ -5,11 +5,23 @@ use crate::cache::{keys, redis_client};
 use crate::db::connection::AppState;
 use crate::db::query_logger::QueryLogger;
 use crate::errors::{AppError, AppResult, ValidationError};
+use crate::moderation::ContentType;
 use crate::models::creator::{CreateCreatorRequest, Creator};
 use crate::search::SearchQuery;
 
 #[tracing::instrument(skip(state), fields(username = %req.username))]
 pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> AppResult<Creator> {
+    // Moderate the requested username before persisting.
+    let moderation = state
+        .moderation
+        .check_content(&req.username, ContentType::Username, None)
+        .await;
+    if moderation.has_high_confidence_violation(0.90) {
+        return Err(AppError::Validation(ValidationError::InvalidRequest {
+            message: "Username was rejected by content moderation".to_string(),
+        }));
+    }
+
     let query = r#"
         INSERT INTO creators (id, username, wallet_address, email, created_at)
         VALUES ($1, $2, $3, $4, NOW())

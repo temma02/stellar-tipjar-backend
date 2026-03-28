@@ -12,6 +12,23 @@ use crate::models::tip::{RecordTipRequest, Tip};
 
 #[tracing::instrument(skip(state), fields(username = %req.username, amount = %req.amount))]
 pub async fn record_tip(state: &AppState, req: RecordTipRequest) -> AppResult<Tip> {
+    // Moderate the tip message when provided.
+    if let Some(ref msg) = req.message {
+        if !msg.trim().is_empty() {
+            let moderation = state
+                .moderation
+                .check_content(msg, ContentType::TipMessage, None)
+                .await;
+            if moderation.has_high_confidence_violation(0.90) {
+                return Err(AppError::Validation(
+                    crate::errors::ValidationError::InvalidRequest {
+                        message: "Tip message was rejected by content moderation".to_string(),
+                    },
+                ));
+            }
+        }
+    }
+
     let mut tx = transaction::begin_transaction(&state.db)
         .await
         .map_err(AppError::from)?;
@@ -59,9 +76,9 @@ pub async fn record_tip_in_tx(
     req: &RecordTipRequest,
 ) -> AppResult<Tip> {
     let query_tip = r#"
-        INSERT INTO tips (id, creator_username, amount, transaction_hash, created_at)
-        VALUES ($1, $2, $3, $4, NOW())
-        RETURNING id, creator_username, amount, transaction_hash, created_at
+        INSERT INTO tips (id, creator_username, amount, transaction_hash, message, created_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        RETURNING id, creator_username, amount, transaction_hash, message, created_at
         "#;
 
     let tip = sqlx::query_as::<_, Tip>(query_tip)
@@ -69,6 +86,7 @@ pub async fn record_tip_in_tx(
         .bind(&req.username)
         .bind(&req.amount)
         .bind(&req.transaction_hash)
+        .bind(&req.message)
         .fetch_one(&mut **tx)
         .await?;
 
@@ -99,7 +117,7 @@ pub async fn record_tip_in_tx(
 /// Fetch all tips for a creator without pagination (kept for internal use).
 pub async fn get_tips_for_creator(state: &AppState, username: &str) -> AppResult<Vec<Tip>> {
     let query = r#"
-        SELECT id, creator_username, amount, transaction_hash, created_at
+        SELECT id, creator_username, amount, transaction_hash, message, created_at
         FROM tips
         WHERE creator_username = $1
         ORDER BY created_at DESC
@@ -143,7 +161,7 @@ pub async fn get_tips_paginated(
     let start = Instant::now();
     let tips = sqlx::query_as::<_, Tip>(
         r#"
-        SELECT id, creator_username, amount, transaction_hash, created_at
+        SELECT id, creator_username, amount, transaction_hash, message, created_at
         FROM tips
         WHERE creator_username = $1
         ORDER BY created_at DESC

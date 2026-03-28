@@ -3,11 +3,12 @@ use axum::{
     http::{HeaderMap, StatusCode},
     middleware,
     response::IntoResponse,
-    routing::{delete, get},
+    routing::{delete, get, post},
     Json, Router,
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use uuid::Uuid;
 
 use crate::controllers::admin_controller;
 use crate::db::connection::AppState;
@@ -31,6 +32,11 @@ pub fn router(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/admin/stats", get(get_stats))
         .route("/admin/creators/:username", delete(delete_creator))
         .route("/admin/audit-logs", get(get_audit_logs))
+        // Moderation endpoints
+        .route("/admin/moderation/queue", get(moderation_queue))
+        .route("/admin/moderation/stats", get(moderation_stats))
+        .route("/admin/moderation/:id/approve", post(moderation_approve))
+        .route("/admin/moderation/:id/reject", post(moderation_reject))
         .route_layer(middleware::from_fn_with_state(state, require_admin))
 }
 
@@ -108,6 +114,109 @@ async fn get_audit_logs(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({ "error": "Failed to retrieve audit logs" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+// ── Moderation handlers ────────────────────────────────────────────────────────
+
+#[derive(serde::Deserialize)]
+struct ModerationQueueQuery {
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default = "default_moderation_limit")]
+    limit: i64,
+}
+
+fn default_moderation_limit() -> i64 {
+    50
+}
+
+async fn moderation_queue(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ModerationQueueQuery>,
+) -> impl IntoResponse {
+    let limit = params.limit.clamp(1, 200);
+    let status_filter = params.status.as_deref();
+    match state.moderation.queue().list(status_filter, limit).await {
+        Ok(items) => (StatusCode::OK, Json(serde_json::json!(items))).into_response(),
+        Err(e) => {
+            tracing::error!("Failed to list moderation queue: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "Failed to retrieve moderation queue" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn moderation_stats(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match state.moderation.queue().stats().await {
+        Ok(stats) => (StatusCode::OK, Json(serde_json::json!(stats))).into_response(),
+        Err(e) => {
+            tracing::error!("Failed to get moderation stats: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "Failed to retrieve moderation stats" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn moderation_approve(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let reviewer = resolve_admin_from_headers(&state, &headers).await;
+    match state.moderation.queue().approve(id, &reviewer).await {
+        Ok(true) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "message": "Item approved" })),
+        )
+            .into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "Item not found or already reviewed" })),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!("Failed to approve moderation item: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "Failed to approve item" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn moderation_reject(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let reviewer = resolve_admin_from_headers(&state, &headers).await;
+    match state.moderation.queue().reject(id, &reviewer).await {
+        Ok(true) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "message": "Item rejected" })),
+        )
+            .into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "Item not found or already reviewed" })),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!("Failed to reject moderation item: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "Failed to reject item" })),
             )
                 .into_response()
         }

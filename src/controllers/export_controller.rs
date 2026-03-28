@@ -15,7 +15,7 @@ pub async fn get_all_creators(pool: &PgPool) -> AppResult<Vec<Creator>> {
 
 pub async fn get_all_tips(pool: &PgPool) -> AppResult<Vec<Tip>> {
     let tips = sqlx::query_as::<_, Tip>(
-        "SELECT id, creator_username, amount, transaction_hash, created_at FROM tips ORDER BY created_at ASC",
+        "SELECT id, creator_username, amount, transaction_hash, message, created_at FROM tips ORDER BY created_at ASC",
     )
     .fetch_all(pool)
     .await?;
@@ -24,7 +24,7 @@ pub async fn get_all_tips(pool: &PgPool) -> AppResult<Vec<Tip>> {
 
 pub async fn get_tips_for_creator(pool: &PgPool, username: &str) -> AppResult<Vec<Tip>> {
     let tips = sqlx::query_as::<_, Tip>(
-        "SELECT id, creator_username, amount, transaction_hash, created_at FROM tips WHERE creator_username = $1 ORDER BY created_at ASC",
+        "SELECT id, creator_username, amount, transaction_hash, message, created_at FROM tips WHERE creator_username = $1 ORDER BY created_at ASC",
     )
     .bind(username)
     .fetch_all(pool)

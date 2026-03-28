@@ -27,6 +27,7 @@ mod graphql;
 mod logging;
 mod metrics;
 mod middleware;
+mod moderation;
 mod models;
 mod routes;
 mod saga;
@@ -94,12 +95,15 @@ async fn main() -> anyhow::Result<()> {
     let tip_service = Arc::new(services::tip_service::TipService::new());
     let creator_service = Arc::new(services::creator_service::CreatorService::new());
 
+    let moderation = Arc::new(moderation::ModerationService::new(pool.clone()));
+
     let state = Arc::new(AppState {
         db: pool,
         stellar,
         performance,
         redis,
         broadcast_tx,
+        moderation,
     });
 
     // Start the real-time analytics pipeline as a background task.
