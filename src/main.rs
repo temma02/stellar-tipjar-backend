@@ -187,6 +187,9 @@ async fn main() -> anyhow::Result<()> {
         ))
         .layer(axum::middleware::from_fn(middleware::cache::cache_control))
         .layer(middleware::timeout::timeout_layer_from_env())
+        .layer(axum::middleware::from_fn(
+            middleware::rate_limiter::whitelist_middleware,
+        ))
         .with_state(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "8000".to_string());

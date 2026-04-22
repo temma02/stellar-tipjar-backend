@@ -62,5 +62,8 @@ pub fn create_app(state: Arc<AppState>) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(middleware::compression::compression_layer())
         .layer(middleware::timeout::timeout_layer_from_env())
+        .layer(axum::middleware::from_fn(
+            middleware::rate_limiter::whitelist_middleware,
+        ))
         .with_state(state)
 }
