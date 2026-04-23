@@ -36,6 +36,7 @@ pub struct CreateCreatorRequest {
     #[validate(custom(function = "crate::validation::stellar::validate_stellar_address"))]
     pub wallet_address: String,
     /// Optional email for tip notifications
+    #[validate(email(message = "Invalid email address"))]
     pub email: Option<String>,
 }
 
