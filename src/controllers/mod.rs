@@ -4,6 +4,7 @@ pub mod creator_controller;
 pub mod export_controller;
 pub mod feature_flag_controller;
 pub mod goal_controller;
+pub mod ip_controller;
 pub mod leaderboard_controller;
 pub mod notification_controller;
 pub mod refund_controller;
