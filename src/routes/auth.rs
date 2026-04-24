@@ -75,7 +75,7 @@ async fn register(
         AppError::from(e)
     })?;
 
-    let tokens = auth_service::generate_tokens(&creator.username).map_err(|e| {
+    let tokens = auth_service::generate_tokens(&creator.username, "creator").map_err(|e| {
         tracing::error!(error = %e, "Token generation failed");
         AppError::internal()
     })?;
@@ -161,7 +161,7 @@ async fn login(
         }
     }
 
-    let tokens = auth_service::generate_tokens(&creator.username).map_err(|e| {
+    let tokens = auth_service::generate_tokens(&creator.username, "creator").map_err(|e| {
         tracing::error!(error = %e, "Token generation failed");
         AppError::internal()
     })?;
@@ -186,7 +186,7 @@ async fn refresh(
     let claims = auth_service::validate_token(&body.refresh_token, "refresh")
         .map_err(|_| AppError::unauthorized("Invalid or expired refresh token"))?;
 
-    let tokens = auth_service::generate_tokens(&claims.sub).map_err(|e| {
+    let tokens = auth_service::generate_tokens(&claims.sub, &claims.role).map_err(|e| {
         tracing::error!(error = %e, "Token generation failed");
         AppError::internal()
     })?;
@@ -379,7 +379,7 @@ async fn recover(
         AppError::from(e)
     })?;
 
-    let tokens = auth_service::generate_tokens(&creator.username).map_err(|e| {
+    let tokens = auth_service::generate_tokens(&creator.username, "creator").map_err(|e| {
         tracing::error!(error = %e, "Token generation failed");
         AppError::internal()
     })?;

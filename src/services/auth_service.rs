@@ -14,14 +14,15 @@ fn jwt_secret() -> String {
     std::env::var("JWT_SECRET").expect("JWT_SECRET must be set")
 }
 
-#[tracing::instrument(skip_all, fields(username = %username))]
-pub fn generate_tokens(username: &str) -> AppResult<AuthResponse> {
+#[tracing::instrument(skip_all, fields(username = %username, role = %role))]
+pub fn generate_tokens(username: &str, role: &str) -> AppResult<AuthResponse> {
     let secret = jwt_secret();
     let now = Utc::now().timestamp() as usize;
 
     let access_claims = Claims {
         sub: username.to_owned(),
         kind: "access".to_owned(),
+        role: role.to_owned(),
         exp: now + ACCESS_TOKEN_SECS as usize,
         iat: now,
     };
@@ -29,6 +30,7 @@ pub fn generate_tokens(username: &str) -> AppResult<AuthResponse> {
     let refresh_claims = Claims {
         sub: username.to_owned(),
         kind: "refresh".to_owned(),
+        role: role.to_owned(),
         exp: now + REFRESH_TOKEN_SECS as usize,
         iat: now,
     };
