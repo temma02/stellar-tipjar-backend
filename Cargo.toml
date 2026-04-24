@@ -51,6 +51,11 @@ async-graphql = { version = "7", features = ["uuid", "chrono", "dataloader"] }
 async-graphql-axum = "7"
 tokio-stream = { version = "0.1", features = ["sync"] }
 async-trait = "0.1"
+image = "0.25"
+aws-sdk-s3 = "1"
+aws-config = "1"
+mime_guess = "2"
+bytes = "1"
 
 # OpenTelemetry distributed tracing
 opentelemetry = { version = "0.22", features = ["trace"] }
