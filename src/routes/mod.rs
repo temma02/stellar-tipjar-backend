@@ -1,11 +1,15 @@
 pub mod admin;
 pub mod auth;
+pub mod categories;
 pub mod creators;
 pub mod export;
+pub mod follows;
 pub mod goals;
 pub mod health;
+pub mod ip_blocking;
 pub mod leaderboard;
 pub mod notifications;
+pub mod stats;
 pub mod tips;
 pub mod v1;
 pub mod v2;

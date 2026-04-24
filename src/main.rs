@@ -124,6 +124,9 @@ async fn main() -> anyhow::Result<()> {
                         .merge(routes::creators::write_router())
                         .merge(routes::verification::router())
                         .merge(routes::goals::router())
+                        .merge(routes::categories::router())
+                        .merge(routes::follows::router())
+                        .merge(routes::ip_blocking::router())
                         .merge(routes::v1::router())
                         .layer(write_limiter_v1),
                 )
@@ -133,6 +136,7 @@ async fn main() -> anyhow::Result<()> {
                         .merge(routes::health::router())
                         .merge(routes::notifications::router())
                         .merge(routes::leaderboard::router())
+                        .merge(routes::stats::router())
                         .layer(general_limiter_v1),
                 ),
         )
@@ -151,6 +155,9 @@ async fn main() -> anyhow::Result<()> {
                     .merge(routes::creators::write_router())
                     .merge(routes::verification::router())
                     .merge(routes::goals::router())
+                    .merge(routes::categories::router())
+                    .merge(routes::follows::router())
+                    .merge(routes::ip_blocking::router())
                     .merge(routes::v2::router())
                     .layer(write_limiter_v2),
             )
@@ -160,6 +167,7 @@ async fn main() -> anyhow::Result<()> {
                     .merge(routes::health::router())
                     .merge(routes::notifications::router())
                     .merge(routes::leaderboard::router())
+                    .merge(routes::stats::router())
                     .layer(general_limiter_v2),
             ),
     )

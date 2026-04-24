@@ -51,6 +51,9 @@ pub fn create_app(state: Arc<AppState>) -> Router {
         .merge(routes::creators::write_router())
         .merge(routes::verification::router())
         .merge(routes::goals::router())
+        .merge(routes::categories::router())
+        .merge(routes::follows::router())
+        .merge(routes::ip_blocking::router())
         .layer(write_limiter);
 
     // Read endpoints use the general limit.
@@ -58,6 +61,7 @@ pub fn create_app(state: Arc<AppState>) -> Router {
         .merge(routes::creators::read_router())
         .merge(routes::health::router())
         .merge(routes::leaderboard::router())
+        .merge(routes::stats::router())
         .layer(general_limiter);
 
     Router::new()

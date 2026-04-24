@@ -1,10 +1,14 @@
 pub mod admin;
 pub mod api_key;
 pub mod auth;
+pub mod category;
 pub mod creator;
+pub mod follow;
 pub mod goal;
+pub mod ip_block;
 pub mod leaderboard;
 pub mod notification;
 pub mod pagination;
+pub mod stats;
 pub mod tip;
 pub mod verification;
