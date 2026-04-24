@@ -25,6 +25,7 @@ mod metrics;
 mod middleware;
 mod moderation;
 mod models;
+mod queue;
 mod routes;
 mod saga;
 mod search;
