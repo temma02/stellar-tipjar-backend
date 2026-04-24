@@ -88,6 +88,8 @@ pub struct RefreshRequest {
 pub struct Claims {
     pub sub: String,
     pub kind: String,
+    /// Role string: "creator" | "supporter" | "admin" | "moderator" | "guest"
+    pub role: String,
     pub exp: usize,
     pub iat: usize,
 }
