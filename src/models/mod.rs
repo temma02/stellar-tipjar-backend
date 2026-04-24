@@ -5,6 +5,7 @@ pub mod campaign;
 pub mod creator;
 pub mod feature_flag;
 pub mod goal;
+pub mod ip_block;
 pub mod leaderboard;
 pub mod notification;
 pub mod pagination;

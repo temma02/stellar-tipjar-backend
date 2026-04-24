@@ -165,6 +165,7 @@ async fn main() -> anyhow::Result<()> {
                         .merge(routes::health::router())
                         .merge(routes::notifications::router())
                         .merge(routes::leaderboard::router())
+                        .merge(routes::stats::router())
                         .layer(general_limiter_v1),
                 ),
         )
@@ -199,10 +200,7 @@ async fn main() -> anyhow::Result<()> {
                     .merge(routes::health::router())
                     .merge(routes::notifications::router())
                     .merge(routes::leaderboard::router())
-                    .layer(axum::middleware::from_fn_with_state(
-                        Arc::clone(&state),
-                        middleware::cache::intelligent_cache,
-                    ))
+                    .merge(routes::stats::router())
                     .layer(general_limiter_v2),
             ),
     )

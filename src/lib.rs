@@ -71,10 +71,7 @@ pub fn create_app(state: Arc<AppState>) -> Router {
         .merge(routes::creators::read_router())
         .merge(routes::health::router())
         .merge(routes::leaderboard::router())
-        .layer(axum::middleware::from_fn_with_state(
-            Arc::clone(&state),
-            middleware::cache::intelligent_cache,
-        ))
+        .merge(routes::stats::router())
         .layer(general_limiter);
 
     Router::new()
