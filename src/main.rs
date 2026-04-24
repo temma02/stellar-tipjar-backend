@@ -8,6 +8,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod analytics;
 mod cache;
+mod cdn;
 mod config;
 mod controllers;
 mod cqrs;
@@ -24,6 +25,7 @@ mod metrics;
 mod middleware;
 mod moderation;
 mod models;
+mod queue;
 mod routes;
 mod saga;
 mod search;
@@ -34,6 +36,7 @@ mod telemetry;
 mod tenancy;
 mod validation;
 mod webhooks;
+mod webrtc;
 mod ws;
 
 use crate::metrics::metrics_handler;
