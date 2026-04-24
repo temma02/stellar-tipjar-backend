@@ -7,4 +7,5 @@ pub mod leaderboard;
 pub mod notification;
 pub mod pagination;
 pub mod tip;
+pub mod campaign;
 pub mod verification;
