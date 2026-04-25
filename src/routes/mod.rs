@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod analytics;
 pub mod api_keys;
+pub mod audit_logs;
 pub mod auth;
 pub mod categories;
 pub mod creators;

@@ -75,6 +75,29 @@ pub async fn create_creator(state: &AppState, req: CreateCreatorRequest) -> AppR
     })?;
     crate::webhooks::trigger_webhooks(state.db.clone(), "creator.created", payload).await;
 
+    // Audit log: creator created
+    {
+        let db = state.db.clone();
+        let username = creator.username.clone();
+        let creator_id = creator.id.to_string();
+        tokio::spawn(async move {
+            let _ = crate::controllers::audit_log_controller::log(
+                &db,
+                "creator.created",
+                Some(&username),
+                "creator",
+                Some(&creator_id),
+                "create",
+                None,
+                None,
+                serde_json::json!({}),
+                None,
+                None,
+            )
+            .await;
+        });
+    }
+
     Ok(creator)
 }
 

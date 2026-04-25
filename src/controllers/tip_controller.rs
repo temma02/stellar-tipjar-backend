@@ -99,6 +99,30 @@ pub async fn record_tip(state: &AppState, req: RecordTipRequest) -> AppResult<Ti
     })?;
     crate::webhooks::trigger_webhooks(state.db.clone(), "tip.recorded", payload).await;
 
+    // Audit log: tip recorded
+    {
+        let db = state.db.clone();
+        let creator = tip.creator_username.clone();
+        let tip_id = tip.id.to_string();
+        let amount = tip.amount.clone();
+        tokio::spawn(async move {
+            let _ = crate::controllers::audit_log_controller::log(
+                &db,
+                "tip.recorded",
+                None,
+                "tip",
+                Some(&tip_id),
+                "create",
+                None,
+                Some(serde_json::json!({ "creator": creator, "amount": amount })),
+                serde_json::json!({}),
+                None,
+                None,
+            )
+            .await;
+        });
+    }
+
     Ok(tip)
 }
 
