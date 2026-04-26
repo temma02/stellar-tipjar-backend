@@ -1,7 +1,6 @@
 pub mod admin;
 pub mod analytics;
 pub mod mocking;
-pub mod cdn;
 pub mod cache;
 pub mod cdn;
 pub mod chaos;

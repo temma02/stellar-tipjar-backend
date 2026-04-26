@@ -53,6 +53,7 @@ use crate::middleware::metrics::track_metrics;
 use db::connection::AppState;
 use docs::ApiDoc;
 use graphql::schema::{graphql_handler, graphql_ws_handler};
+use service_mesh::discovery::ServiceRegistry;
 use services::stellar_service::StellarService;
 
 #[tokio::main]
@@ -147,6 +148,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Start Stellar transaction monitoring (#175)
     let monitor = services::monitoring_service::spawn(Arc::clone(&state));
+
+    // Service mesh: registry for health/canary endpoints (#245)
+    let service_registry = Arc::new(ServiceRegistry::new());
 
     // --- Currency service ---
     let currency_svc = Arc::new(currency::CurrencyService::new());
@@ -257,6 +261,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/metrics/summary", axum::routing::get(metrics_summary_handler))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(routes::monitoring::router(Arc::clone(&state), Arc::clone(&monitor)))
+        .merge(routes::mesh::router(Arc::clone(&state), Arc::clone(&service_registry)))
         .merge(routes::profiling::router(Arc::clone(&state)))
         .merge(v1)
         .merge(v2)

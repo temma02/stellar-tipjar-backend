@@ -4,15 +4,25 @@ metadata:
   name: stellar-tipjar-backend
   labels:
     app: stellar-tipjar-backend
+    version: stable
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: stellar-tipjar-backend
+      version: stable
   template:
     metadata:
       labels:
         app: stellar-tipjar-backend
+        version: stable
+      annotations:
+        # Istio sidecar injection
+        sidecar.istio.io/inject: "true"
+        # Expose Prometheus metrics to Istio telemetry
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: stellar-tipjar-backend

@@ -1,0 +1,57 @@
+---
+# DestinationRule: defines the stable and canary subsets based on the
+# `version` label set in deployment.yaml.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: stellar-tipjar-backend
+spec:
+  host: stellar-tipjar-backend
+  trafficPolicy:
+    connectionPool:
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+    # Circuit breaker: eject unhealthy instances for 30 s after 5 consecutive 5xx.
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  subsets:
+    - name: stable
+      labels:
+        version: stable
+    - name: canary
+      labels:
+        version: canary
+---
+# VirtualService: routes 95 % of traffic to stable, 5 % to canary.
+# Adjust weights at deploy time (e.g. via `kubectl patch`) to shift traffic.
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: stellar-tipjar-backend
+spec:
+  hosts:
+    - stellar-tipjar-backend
+  http:
+    - match:
+        # Route requests with the canary header directly to the canary subset,
+        # enabling targeted testing without touching the weight split.
+        - headers:
+            x-canary:
+              exact: "true"
+      route:
+        - destination:
+            host: stellar-tipjar-backend
+            subset: canary
+    - route:
+        - destination:
+            host: stellar-tipjar-backend
+            subset: stable
+          weight: 95
+        - destination:
+            host: stellar-tipjar-backend
+            subset: canary
+          weight: 5
