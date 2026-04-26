@@ -13,6 +13,7 @@ pub mod goals;
 pub mod health;
 pub mod ip_blocking;
 pub mod leaderboard;
+pub mod mesh;
 pub mod monitoring;
 pub mod notifications;
 pub mod profiling;
