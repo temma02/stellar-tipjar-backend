@@ -20,6 +20,7 @@ pub mod notifications;
 pub mod profiling;
 pub mod refunds;
 pub mod scheduled_tips;
+pub mod scheduler;
 pub mod stats;
 pub mod subscriptions;
 pub mod teams;

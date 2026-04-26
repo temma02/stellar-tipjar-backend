@@ -146,6 +146,21 @@ async fn main() -> anyhow::Result<()> {
     // Start background job processing system
     let (_job_queue, _job_scheduler) = jobs::start(Arc::clone(&state), jobs::JobConfig::default());
 
+    // Start cron scheduler (cleanup, weekly reports, cache warming, analytics)
+    {
+        let pool = pool.clone();
+        tokio::spawn(async move {
+            match scheduler::SchedulerManager::new(pool.clone()).await {
+                Ok(mgr) => {
+                    if let Err(e) = mgr.start(pool).await {
+                        tracing::error!("Scheduler failed to start: {e}");
+                    }
+                }
+                Err(e) => tracing::error!("Failed to create scheduler: {e}"),
+            }
+        });
+    }
+
     // Start Stellar transaction monitoring (#175)
     let monitor = services::monitoring_service::spawn(Arc::clone(&state));
 
@@ -202,6 +217,7 @@ async fn main() -> anyhow::Result<()> {
                         .merge(routes::leaderboard::router())
                         .merge(routes::stats::router())
                         .merge(routes::analytics::router())
+                        .merge(routes::scheduler::router(Arc::clone(&state)))
                         .layer(general_limiter_v1),
                 ),
         )
@@ -240,6 +256,7 @@ async fn main() -> anyhow::Result<()> {
                     .merge(routes::leaderboard::router())
                     .merge(routes::stats::router())
                     .merge(routes::analytics::router())
+                    .merge(routes::scheduler::router(Arc::clone(&state)))
                     .layer(general_limiter_v2),
             ),
     )
