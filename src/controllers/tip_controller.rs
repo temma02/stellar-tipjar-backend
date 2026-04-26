@@ -9,7 +9,7 @@ use crate::db::transaction;
 use crate::errors::{AppError, AppResult};
 use crate::metrics::collectors::DB_QUERY_DURATION_SECONDS; // Kept from your branch
 use crate::models::pagination::{PaginatedResponse, PaginationParams};
-use crate::models::tip::{RecordTipRequest, Tip, TipFilters, TipSortParams};
+use crate::models::tip::{RecordTipRequest, ReportMessageRequest, Tip, TipFilters, TipSortParams};
 use crate::moderation::ContentType;
 
 #[tracing::instrument(skip(state), fields(username = %req.username, amount = %req.amount))]
@@ -133,9 +133,9 @@ pub async fn record_tip_in_tx(
     req: &RecordTipRequest,
 ) -> AppResult<(Tip, Option<crate::models::campaign::CampaignMatchResult>)> {
     let query_tip = r#"
-        INSERT INTO tips (id, creator_username, amount, transaction_hash, message, created_at)
-        VALUES ($1, $2, $3, $4, $5, NOW())
-        RETURNING id, creator_username, amount, transaction_hash, message, created_at
+        INSERT INTO tips (id, creator_username, amount, transaction_hash, message, message_visibility, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id, creator_username, amount, transaction_hash, message, message_visibility, created_at
         "#;
 
     let tip = sqlx::query_as::<_, Tip>(query_tip)
@@ -144,6 +144,7 @@ pub async fn record_tip_in_tx(
         .bind(&req.amount)
         .bind(&req.transaction_hash)
         .bind(&req.message)
+        .bind(req.message_visibility.as_str())
         .fetch_one(&mut **tx)
         .await?;
 
@@ -231,7 +232,7 @@ pub async fn record_tip_in_tx(
 /// Fetch all tips for a creator without pagination (kept for internal use).
 pub async fn get_tips_for_creator(state: &AppState, username: &str) -> AppResult<Vec<Tip>> {
     let query = r#"
-        SELECT id, creator_username, amount, transaction_hash, message, created_at
+        SELECT id, creator_username, amount, transaction_hash, message, message_visibility, created_at
         FROM tips
         WHERE creator_username = $1
         ORDER BY created_at DESC
@@ -308,7 +309,7 @@ pub async fn get_tips_paginated(
 
     let count_sql = format!("SELECT COUNT(*) FROM tips {where_clause}");
     let data_sql = format!(
-        "SELECT id, creator_username, amount, transaction_hash, message, created_at \
+        "SELECT id, creator_username, amount, transaction_hash, message, message_visibility, created_at \
          FROM tips {where_clause} \
          ORDER BY {sort_col} {sort_dir} \
          LIMIT ${bind_idx} OFFSET ${}",
@@ -353,4 +354,38 @@ pub async fn get_tips_paginated(
     DB_QUERY_DURATION_SECONDS.observe(duration.as_secs_f64());
 
     Ok(PaginatedResponse::new(tips, total, &params))
+}
+
+/// Report a tip message for moderation review.
+pub async fn report_tip_message(
+    state: &AppState,
+    tip_id: Uuid,
+    req: ReportMessageRequest,
+) -> AppResult<()> {
+    // Verify the tip exists and has a message.
+    let tip = sqlx::query_as::<_, Tip>(
+        "SELECT id, creator_username, amount, transaction_hash, message, message_visibility, created_at \
+         FROM tips WHERE id = $1",
+    )
+    .bind(tip_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::Database(crate::errors::DatabaseError::NotFound {
+        entity: "tip".to_string(),
+        identifier: tip_id.to_string(),
+    }))?;
+
+    let message_text = tip.message.as_deref().unwrap_or("");
+    let reporter = req.reported_by.as_deref().unwrap_or("anonymous");
+
+    state
+        .moderation
+        .flag("tip_message", tip_id, message_text, &req.reason, reporter)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to flag tip message: {e}");
+            AppError::internal()
+        })?;
+
+    Ok(())
 }
