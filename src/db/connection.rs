@@ -26,6 +26,8 @@ pub struct AppState {
     pub cache: Option<Arc<MultiLayerCache>>,
     /// Cache invalidator for pattern-based invalidation.
     pub invalidator: Option<Arc<CacheInvalidator>>,
+    /// Sharding manager — `None` when sharding is disabled (single-shard mode).
+    pub sharding: Option<Arc<crate::db::sharding::ShardingManager>>,
 }
 
 /// Connect to Postgres with exponential-backoff retry and circuit-breaker protection.
