@@ -239,3 +239,75 @@ fn resource_exhaustion_scenario_exists() {
     let names: Vec<_> = ChaosScenarios::all().iter().map(|e| e.name.clone()).collect();
     assert!(names.contains(&"Resource Exhaustion".to_string()));
 }
+
+// ── Degraded mode scenario tests ──────────────────────────────────────────────
+
+#[tokio::test]
+async fn degraded_mode_scenario_has_two_injectors() {
+    // degraded_mode combines LatencyInjector + DatabaseFailureInjector.
+    let scenario = ChaosScenarios::degraded_mode();
+    assert_eq!(scenario.injectors.len(), 2);
+}
+
+#[tokio::test]
+async fn combined_injectors_both_activate() {
+    let latency = LatencyInjector::new("db", Duration::from_millis(1));
+    let db_fail = DatabaseFailureInjector::new(1.0);
+
+    latency.inject().await.unwrap();
+    db_fail.inject().await.unwrap();
+
+    assert!(latency.is_active());
+    assert!(db_fail.maybe_fail().is_err());
+
+    latency.recover().await.unwrap();
+    db_fail.recover().await.unwrap();
+
+    assert!(!latency.is_active());
+    assert!(db_fail.maybe_fail().is_ok());
+}
+
+#[tokio::test]
+async fn experiment_with_combined_injectors_runs() {
+    let experiment = ChaosExperiment::new("Combined", Duration::from_millis(1))
+        .with_injector(Box::new(LatencyInjector::new("db", Duration::from_millis(1))))
+        .with_injector(Box::new(DatabaseFailureInjector::new(0.0)))
+        .with_thresholds(ResilienceThresholds {
+            max_error_rate_during_chaos: 0.10,
+            max_latency_multiplier: 10.0,
+            max_recovery_error_rate_multiplier: 2.0,
+        });
+
+    let mut baseline = MetricsCollector::new();
+    let mut chaos = MetricsCollector::new();
+    let mut recovery = MetricsCollector::new();
+
+    baseline.record_success(Duration::from_millis(5));
+    chaos.record_success(Duration::from_millis(6));
+    recovery.record_success(Duration::from_millis(5));
+
+    let result = experiment.run(&mut baseline, &mut chaos, &mut recovery).await.unwrap();
+    assert!(result.passed);
+    assert_eq!(result.name, "Combined");
+}
+
+// ── MetricsCollector reset and LatencyTimer tests ─────────────────────────────
+
+#[test]
+fn metrics_collector_reset_clears_state() {
+    let mut col = MetricsCollector::new();
+    col.record_success(Duration::from_millis(10));
+    col.record_error();
+    col.reset();
+    let m = col.snapshot();
+    assert_eq!(m.total(), 0);
+    assert_eq!(m.error_rate, 0.0);
+}
+
+#[test]
+fn latency_timer_measures_elapsed() {
+    use stellar_tipjar_backend::chaos::metrics::LatencyTimer;
+    let timer = LatencyTimer::start();
+    std::thread::sleep(Duration::from_millis(10));
+    assert!(timer.elapsed() >= Duration::from_millis(5));
+}
