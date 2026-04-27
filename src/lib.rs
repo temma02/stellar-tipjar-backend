@@ -83,6 +83,7 @@ pub fn create_app(state: Arc<AppState>) -> Router {
         .merge(routes::analytics::router())
         .merge(routes::receipts::router())
         .merge(routes::location::router())
+        .merge(routes::locks::router())
         .layer(general_limiter);
 
     Router::new()

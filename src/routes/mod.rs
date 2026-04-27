@@ -19,6 +19,7 @@ pub mod ip_blocking;
 pub mod leaderboard;
 pub mod load_balancer;
 pub mod location;
+pub mod locks;
 pub mod mesh;
 pub mod monitoring;
 pub mod notifications;
