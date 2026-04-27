@@ -19,5 +19,6 @@ pub mod scheduled_tip;
 pub mod stats;
 pub mod subscription;
 pub mod team;
+pub mod tenant;
 pub mod tip;
 pub mod verification;

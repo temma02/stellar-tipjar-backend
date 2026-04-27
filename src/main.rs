@@ -149,6 +149,8 @@ async fn main() -> anyhow::Result<()> {
     // Gracefully disabled when SHARD_COUNT=1 and no SHARD_n_DSN env vars are set.
     let sharding = db::sharding::init_sharding(&database_url).await;
 
+    let event_store = Arc::new(events::EventStore::new(pool.clone()));
+
     let state = Arc::new(AppState {
         db: pool.clone(),
         stellar,
@@ -163,7 +165,14 @@ async fn main() -> anyhow::Result<()> {
         cache: Some(Arc::clone(&cache)),
         invalidator: Some(Arc::clone(&invalidator)),
         replicas: replica_manager.clone(),
+        event_store: Arc::clone(&event_store),
     });
+
+    // Build CommandBus after state is constructed (avoids circular dependency).
+    let command_bus = Arc::new(cqrs::CommandBus::new(
+        Arc::clone(&state),
+        Arc::clone(&event_store),
+    ));
 
     // Start replica lag monitoring background task.
     if let Some(ref mgr) = replica_manager {
@@ -216,6 +225,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Start Stellar transaction monitoring (#175)
     let monitor = services::monitoring_service::spawn(Arc::clone(&state));
+
+    // Start blockchain event listener (#238)
+    indexer::spawn(Arc::clone(&state));
 
     // Service mesh: registry for health/canary endpoints (#245)
     let service_registry = Arc::new(ServiceRegistry::new());
@@ -298,6 +310,7 @@ async fn main() -> anyhow::Result<()> {
                 .merge(routes::audit_logs::router(Arc::clone(&state)))
                 .merge(routes::export::router(Arc::clone(&state)))
                 .merge(routes::deprecation::router())
+                .merge(routes::tenants::router())
                 .merge(
                     Router::new()
                         .merge(routes::auth::router())
@@ -347,6 +360,7 @@ async fn main() -> anyhow::Result<()> {
             .merge(routes::refunds::admin_router(Arc::clone(&state)))
             .merge(routes::audit_logs::router(Arc::clone(&state)))
             .merge(routes::export::router(Arc::clone(&state)))
+            .merge(routes::tenants::router())
             .merge(
                 Router::new()
                     .merge(routes::auth::router())
@@ -404,6 +418,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(axum::Extension(currency_svc))
         // Inject Redis connection into request extensions for distributed throttling.
         .layer(axum::Extension(state.redis.clone()))
+        // Inject CommandBus for event-sourcing write operations.
+        .layer(axum::Extension(command_bus))
         .layer(cors)
         .layer(axum::middleware::map_response(middleware::cors::security_headers))
         .layer(TraceLayer::new_for_http())

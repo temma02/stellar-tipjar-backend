@@ -8,6 +8,7 @@ use tokio::sync::broadcast;
 use super::performance::PerformanceMonitor;
 use super::replica::ReplicaManager;
 use crate::cache::{CacheInvalidator, MultiLayerCache};
+use crate::events::EventStore;
 use crate::moderation::ModerationService;
 use crate::services::circuit_breaker::CircuitBreaker;
 use crate::services::stellar_service::StellarService;
@@ -26,6 +27,8 @@ pub struct AppState {
     pub invalidator: Option<Arc<CacheInvalidator>>,
     /// Read replica manager — None when no replicas are configured.
     pub replicas: Option<Arc<ReplicaManager>>,
+    /// Event store for the event sourcing architecture.
+    pub event_store: Arc<EventStore>,
 }
 
 impl AppState {
