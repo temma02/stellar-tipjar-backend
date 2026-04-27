@@ -8,6 +8,7 @@ use tokio::sync::broadcast;
 use super::performance::PerformanceMonitor;
 use super::replica::ReplicaManager;
 use crate::cache::{CacheInvalidator, MultiLayerCache};
+use crate::crypto::encryption::EncryptionKeyManager;
 use crate::moderation::ModerationService;
 use crate::services::circuit_breaker::CircuitBreaker;
 use crate::services::distributed_lock::DistributedLockService;
@@ -25,6 +26,7 @@ pub struct AppState {
     pub db_circuit_breaker: Arc<CircuitBreaker>,
     pub cache: Option<Arc<MultiLayerCache>>,
     pub invalidator: Option<Arc<CacheInvalidator>>,
+    pub encryption: Arc<EncryptionKeyManager>,
     /// Read replica manager — None when no replicas are configured.
     pub replicas: Option<Arc<ReplicaManager>>,
     /// Distributed lock service — None when Redis is unavailable.
