@@ -2,7 +2,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use crate::errors::AppError;
 
-#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
+/// Aggregated analytics for a tenant over a time window
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, utoipa::ToSchema)]
 pub struct TenantAnalytics {
     pub tenant_id: Uuid,
     pub total_creators: i64,
@@ -68,7 +69,8 @@ impl TenantAnalyticsService {
     }
 }
 
-#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
+/// Current resource usage for a tenant
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, utoipa::ToSchema)]
 pub struct TenantUsage {
     pub tenant_id: Uuid,
     pub creators_used: i32,
